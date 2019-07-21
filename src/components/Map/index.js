@@ -1,45 +1,47 @@
 import React from 'react';
+import Agency from '../Agency';
+
 import './Map.scss';
-import * as d3 from 'd3';
-// import { geoPath, geoMercator } from 'd3-scale';
 
 export default class Map extends React.Component {
   state = {};
+  renderMap = (geoJSON, mymap) => {
+    const { L } = window;
+
+    L.geoJson(geoJSON, {
+      style: Map.setChoroplethStyles,
+    }).addTo(mymap);
+  };
 
   componentDidMount() {
-    //Width and height
-    var w = 500;
-    var h = 300;
+    const { L } = window;
+    var mymap = L.map('mapid', { minZoom: 14 }).setView([37.73, -122.46], 18);
+    const tileURL = `https://tile.openstreetmap.org/{z}/{x}/{y}.png`;
+    const attributionHTML =
+      'Basemap tiles &copy; <a href="https://www.openstreetmap.org" target="_blank"> OpenStreet</a> &nbsp;';
 
-    //Define map projection
-    var projection = d3
-      .geoMercator()
-      .translate([w / 2, h / 2])
-      .scale([500]);
+    L.tileLayer(tileURL, {
+      attribution: attributionHTML,
+    }).addTo(mymap);
 
-    //Define path generator
-    var path = d3.geoPath().projection(projection);
-
-    //Create SVG element
-    var svg = d3
-      .select('body')
-      .append('svg')
-      .attr('width', w)
-      .attr('height', h);
-
-    //Load in GeoJSON data
-    d3.json('http://localhost:3000/sfmaps/streets.json').then(function(json) {
-      //Bind data and create one path per GeoJSON feature
-      svg
-        .selectAll('path')
-        .data(json.features)
-        .enter()
-        .append('path')
-        .attr('d', path)
-        .style('fill', 'steelblue');
+    Promise.all([
+      fetch('http://localhost:3000/sfmaps/streets.json').then(res => res.json()),
+      // fetch('http://localhost:3000/sfmaps/arteries.json').then(res => res.json()),
+      // fetch('http://localhost:3000/sfmaps/neighborhoods.json').then(res => res.json()),
+      fetch('http://localhost:3000/sfmaps/freeways.json').then(res => res.json()),
+    ]).then(result => {
+      result.forEach(val => {
+        this.renderMap(val, mymap);
+      });
     });
   }
+
   render() {
-    return <div />;
+    return (
+      <div>
+        <Agency onChange={this.agencyChanged} />
+        <div id="mapid" style={{ height: `${window.innerHeight}px` }} />
+      </div>
+    );
   }
 }
